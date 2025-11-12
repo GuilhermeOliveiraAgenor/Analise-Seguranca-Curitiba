@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Funções | Análise de Segurança{% endblock %}
+
+{% block content %}
+<h3 class="mb-4">📊 Funções de Análise</h3>
+
+<div class="row">
+  {% for key, meta in funcoes.items() %}
+  <div class="col-md-6 mb-3">
+    <a href="{{ url_for('funcao_parametros', key=key) }}">
+      <div class="card p-3 h-100 hover-shadow">
+        <h5 class="mb-2">{{ meta.label }}</h5>
+        <p class="text-muted small mb-0">
+          Parâmetros: {{ meta.params | join(', ') }}
+        </p>
+      </div>
+    </a>
+  </div>
+  {% endfor %}
+</div>
+
+{% if tables %}
+<div class="mt-4">
+  <h6 class="text-muted">Bases carregadas:</h6>
+  <ul>
+    {% for s, t in tables %}
+      <li>{{ s }} <span class="text-secondary">({{ t }})</span></li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+{% endblock %}

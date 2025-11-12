@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+  <h3 class="text-light mb-4">{{ meta.label }}</h3>
+
+  {% if stage == 'form' %}
+  <div class="card bg-dark border-secondary p-4">
+    <form method="post" class="text-light">
+      <div class="mb-3">
+        <label class="form-label">Base de Dados</label>
+        <select name="dataset" class="form-select bg-secondary text-light border-0">
+          {% for sheet, table in tables %}
+          <option value="{{ table }}">{{ sheet }} ({{ table }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% if 'crime' in meta.params %}
+      <div class="mb-3">
+        <label class="form-label">Crime</label>
+        <select name="crime" class="form-select bg-secondary text-light border-0">
+          {% for c in crimes %}
+          <option value="{{ c }}">{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      {% if 'bairro' in meta.params %}
+      <div class="mb-3">
+        <label class="form-label">Bairro</label>
+        <select name="bairro" class="form-select bg-secondary text-light border-0">
+          {% for b in bairros %}
+          <option value="{{ b }}">{{ b }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
+      {% if 'semestre' in meta.params %}
+      <div class="mb-3">
+        <label class="form-label">Semestre</label>
+        <select name="semestre" class="form-select bg-secondary text-light border-0">
+          <option value="1">1º Semestre</option>
+          <option value="2">2º Semestre</option>
+        </select>
+      </div>
+      {% endif %}
+
+      {% if 'periodo' in meta.params %}
+      <div class="mb-3">
+        <label class="form-label">Período do Dia</label>
+        <select name="periodo" class="form-select bg-secondary text-light border-0">
+          <option value="Manhã">Manhã</option>
+          <option value="Tarde">Tarde</option>
+          <option value="Noite">Noite</option>
+        </select>
+      </div>
+      {% endif %}
+
+      <div class="text-end">
+        <button type="submit" class="btn btn-primary">Gerar Gráfico</button>
+      </div>
+    </form>
+  </div>
+
+  {% elif stage == 'chart_multi' %}
+  {% for bloco in blocos %}
+  <div class="card bg-dark border-secondary p-3 mb-4">
+    <h5 class="text-light mb-2">{{ meta.label }} - {{ bloco.titulo }}</h5>
+    <canvas id="chartCanvas{{ loop.index }}" height="180"></canvas>
+  </div>
+  {% endfor %}
+
+  {% if result_table %}
+  <div class="card bg-dark border-secondary p-3 mt-3">
+    <h6 class="text-light mb-2">📋 Dados Detalhados</h6>
+    <div class="table-responsive">{{ result_table|safe }}</div>
+  </div>
+  {% endif %}
+
+  {% elif stage == 'chart' %}
+  <div class="card bg-dark border-secondary p-3 mb-4">
+    <h5 class="text-light mb-2">{{ meta.label }}</h5>
+    <canvas id="chartCanvas" height="160"></canvas>
+  </div>
+
+  {% if result_table %}
+  <div class="card bg-dark border-secondary p-3 mt-3">
+    <h6 class="text-light mb-2">📋 Dados Detalhados</h6>
+    <div class="table-responsive">{{ result_table|safe }}</div>
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
+<style>
+  canvas {
+    max-height: 600px !important;
+  }
+</style>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    console.log("✅ DOM carregado — iniciando renderização de gráficos...");
+
+    // Armazena instâncias globais de gráficos para evitar sobreposição
+    if (window.chartInstances === undefined) window.chartInstances = {};
+
+    // ===============================
+    // 🔹 Gráfico único (chart)
+    // ===============================
+    {% if stage == 'chart' %}
+    const canvas = document.getElementById('chartCanvas');
+    if (!canvas) return console.error("❌ Canvas principal não encontrado!");
+
+    const ctx = canvas.getContext('2d');
+    const labels = {{ labels | tojson | safe }};
+    const values = {{ values | tojson | safe }};
+    const metaLabel = "{{ meta.label }}";
+
+    console.log("📊 Dados (chart único):", labels.slice(0, 5), values.slice(0, 5));
+    const numericValues = (values || []).map(v => Number(v) || 0);
+
+    // 🔹 Destrói gráfico anterior, se existir
+    if (window.chartInstances[canvas.id]) {
+      window.chartInstances[canvas.id].destroy();
+    }
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(88,166,255,0.8)');
+    gradient.addColorStop(1, 'rgba(0,90,255,0.4)');
+
+    // 🔹 Cria novo gráfico
+    window.chartInstances[canvas.id] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: metaLabel,
+          data: numericValues,
+          backgroundColor: gradient,
+          borderColor: '#2ea043',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        animation: false,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#e6edf3' } },
+          tooltip: { callbacks: { label: ctx => ctx.parsed.y.toLocaleString('pt-BR') } },
+          datalabels: {
+            color: '#fff',
+            anchor: 'end',
+            align: 'start',
+            font: { weight: 'bold', size: 10 },
+            formatter: value => value.toLocaleString('pt-BR')
+          }
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { color: '#e6edf3' }, grid: { color: '#30363d' } },
+          x: { ticks: { color: '#e6edf3', maxRotation: 45, minRotation: 45 }, grid: { color: '#30363d' } }
+        }
+      },
+      plugins: [ChartDataLabels]
+    });
+    {% endif %}
+
+    // ===============================
+    // 🔹 Gráficos múltiplos (chart_multi)
+    // ===============================
+    {% if stage == 'chart_multi' %}
+    {% for bloco in blocos %}
+    (function () {
+      const canvasId = 'chartCanvas{{ loop.index }}';
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return console.warn(`⚠️ Canvas '${canvasId}' não encontrado.`);
+
+      const ctx = canvas.getContext('2d');
+      const labels = {{ bloco.labels | tojson | safe }};
+      const values = {{ bloco.data | tojson | safe }};
+      const titulo = "{{ meta.label }} - {{ bloco.titulo }}";
+      const numericValues = (values || []).map(v => Number(v) || 0);
+
+      // 🔹 Destrói gráfico anterior, se existir
+      if (window.chartInstances[canvas.id]) {
+        window.chartInstances[canvas.id].destroy();
+      }
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+      gradient.addColorStop(0, 'rgba(255, 159, 64, 0.7)');
+      gradient.addColorStop(1, 'rgba(255, 99, 132, 0.5)');
+
+      // 🔹 Cria novo gráfico
+      window.chartInstances[canvas.id] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: titulo,
+            data: numericValues,
+            backgroundColor: gradient,
+            borderColor: '#2ea043',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          animation: false,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#e6edf3' } },
+            tooltip: { callbacks: { label: ctx => ctx.parsed.y.toLocaleString('pt-BR') } },
+            datalabels: {
+              color: '#fff',
+              anchor: 'end',
+              align: 'start',
+              font: { weight: 'bold', size: 9 },
+              formatter: value => value.toLocaleString('pt-BR')
+            }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { color: '#e6edf3' }, grid: { color: '#30363d' } },
+            x: { ticks: { color: '#e6edf3', autoSkip: false, maxRotation: 45, minRotation: 45 }, grid: { color: '#30363d' } }
+          }
+        },
+        plugins: [ChartDataLabels]
+      });
+    })();
+    {% endfor %}
+    {% endif %}
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Upload | Análise de Segurança{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card shadow p-4">
+      <h3 class="mb-3">📂 Carregar base de dados (.xlsx)</h3>
+      <p class="text-muted mb-4">
+        Faça upload do arquivo <strong>Dados_2024-2025</strong>. Todas as planilhas serão gravadas no SQLite.
+      </p>
+      <form action="" method="post" enctype="multipart/form-data">
+        <div class="mb-3">
+          <input type="file" name="file" accept=".xlsx" class="form-control" required>
+        </div>
+        <button class="btn btn-primary w-100">Enviar e Processar</button>
+      </form>
+
+      {% if tables %}
+      <hr class="my-4">
+      <p class="text-success mb-1">✅ Base já carregada.</p>
+      <p class="mb-0">Planilhas disponíveis:</p>
+      <ul class="mt-2">
+        {% for s, t in tables %}
+          <li>{{ s }} <span class="text-secondary">({{ t }})</span></li>
+        {% endfor %}
+      </ul>
+      <a href="{{ url_for('funcoes') }}" class="btn btn-outline-light mt-3 w-100">Ir para Funções</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
